@@ -12,6 +12,7 @@
 #include <opencv2/opencv.hpp>
 #include <boost/filesystem.hpp>
 #include "Algorithm.h"
+#include "CudaAlgorithm.h"
 
 int main(int argc, char const *argv[])
 {
@@ -32,9 +33,20 @@ int main(int argc, char const *argv[])
     cv::Mat img16u;
     img.convertTo(img16u, CV_16UC1);
 
-    aek::Algorithm algorithm;
+    // aek::Algorithm algorithm;
+    aek::CudaAlgorithm algorithm;
     cv::Mat result;
+
+    auto t1label = std::chrono::high_resolution_clock::now();
+
     algorithm.Apply(img16u, result);
+
+    auto t2label = std::chrono::high_resolution_clock::now();
+    auto ttlabel = std::chrono::duration_cast<std::chrono::microseconds>(t2label-t1label).count();
+    static int64_t sumttlabel=0;
+    sumttlabel+=ttlabel;
+    static uint64_t countlabel=0;
+    std::cout << "label " << ttlabel << "\t\t\t avg " << sumttlabel/++countlabel << std::endl;
 
     return 0;
 }

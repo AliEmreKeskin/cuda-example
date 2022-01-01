@@ -21,11 +21,11 @@ namespace aek
     public:
         Algorithm();
         ~Algorithm();
-        void Apply(cv::InputArray src, cv::OutputArray dst);
+        virtual void Apply(cv::InputArray src, cv::OutputArray dst);
 
-    private:
+    protected:
         void Transpose(cv::InputArray src, cv::OutputArray dst);
-        void Matmul(cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst);
+        virtual void Matmul(cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst);
         cv::Size windowSize_;
     };
 

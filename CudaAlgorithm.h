@@ -13,18 +13,22 @@
  */
 
 #include <opencv2/opencv.hpp>
-
+#include <cuda_runtime.h>
+#include "Algorithm.h"
 namespace aek
 {
-    class CudaAlgorithm
+    class CudaAlgorithm : public aek::Algorithm
     {
     public:
         CudaAlgorithm();
         ~CudaAlgorithm();
-        void Apply(cv::InputArray input, cv::OutputArray output);
+        virtual void Apply(cv::InputArray src, cv::OutputArray dst) override final;
 
-    private:
+    protected:
+        virtual void Matmul(cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst) override final;
     };
+
+    __global__ void MatmulKernel(u_int16_t *A, u_int16_t *B, u_int16_t *C, size_t N);
 
 } // namespace aek
 #endif // __CUDAALGORITHM_H__

@@ -4,5 +4,9 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"cmake.debugConfig": {
+			"args": ["/home/emre/Pictures/img_5terre.jpg"]
+		}
+	}
 }
