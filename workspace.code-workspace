@@ -6,7 +6,28 @@
 	],
 	"settings": {
 		"cmake.debugConfig": {
-			"args": ["/home/emre/Pictures/img_5terre.jpg"]
+			"args": ["/home/vision/Pictures/download.jpeg"]
 		}
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Debug",
+				"type": "cppdbg",
+				"request": "launch",
+				"program": "${workspaceFolder}/build/cuda-example",
+				"args": ["/home/vision/Pictures/download.jpeg"],
+				"cwd": "${workspaceFolder}/build"
+			},
+			{
+				"name": "CUDA C++: Launch",
+				"type": "cuda-gdb",
+				"request": "launch",
+				"program": "${workspaceFolder}/build/cuda-example",
+				"args": "/home/vision/Pictures/download.jpeg",
+				"internalConsoleOptions": "openOnSessionStart"
+			}
+		]
 	}
 }

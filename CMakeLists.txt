@@ -10,3 +10,5 @@ target_sources(${PROJECT_NAME} PRIVATE main.cpp CudaAlgorithm.cu Algorithm.cpp)
 target_include_directories(${PROJECT_NAME} PRIVATE ${OpenCV_INCLUDE_DIRS} ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ${OpenCV_LIBS} Boost::filesystem)
+
+set(CMAKE_CUDA_FLAGS_DEBUG "-g -G")

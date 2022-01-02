@@ -24,7 +24,7 @@ namespace aek
         virtual void Apply(cv::InputArray src, cv::OutputArray dst);
 
     protected:
-        void Transpose(cv::InputArray src, cv::OutputArray dst);
+        virtual void Transpose(cv::InputArray src, cv::OutputArray dst);
         virtual void Matmul(cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst);
         cv::Size windowSize_;
     };

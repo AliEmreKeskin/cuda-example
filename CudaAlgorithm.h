@@ -25,9 +25,11 @@ namespace aek
         virtual void Apply(cv::InputArray src, cv::OutputArray dst) override final;
 
     protected:
+        virtual void Transpose(cv::InputArray src, cv::OutputArray dst) override final;
         virtual void Matmul(cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst) override final;
     };
 
+    __global__ void TransposeKernel(u_int16_t *src, u_int16_t *dst, const size_t srcWidth, const size_t srcHeight);
     __global__ void MatmulKernel(u_int16_t *A, u_int16_t *B, u_int16_t *C, size_t N);
 
 } // namespace aek

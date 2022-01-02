@@ -38,11 +38,35 @@ namespace aek
             for (tl.x = 0; tl.x < src.size().width - windowSize_.width; tl.x++)
             {
                 input(cv::Rect(tl, windowSize_)).copyTo(window);
-                aek::Algorithm::Transpose(window, transpose);
+                aek::CudaAlgorithm::Transpose(window, transpose);
                 aek::CudaAlgorithm::Matmul(window, transpose, product);
                 output(cv::Rect(tl, windowSize_)) += product;
             }
         }
+    }
+
+    void CudaAlgorithm::Transpose(cv::InputArray src, cv::OutputArray dst)
+    {
+        dst.createSameSize(src, CV_16UC1);
+
+        u_int16_t *d_src;
+        u_int16_t *d_dst;
+
+        size_t size = src.size().width * src.size().height * sizeof(u_int16_t);
+
+        cudaMalloc((void **)&d_src, size);
+        cudaMalloc((void **)&d_dst, size);
+
+        cudaMemcpy(d_src, src.getMat().data, size, cudaMemcpyHostToDevice);
+
+        dim3 threadsPerBlock(src.size().width, src.size().height);
+        dim3 blocksPerGrid(1, 1);
+        aek::TransposeKernel<<<blocksPerGrid, threadsPerBlock>>>(d_src, d_dst, src.size().width, src.size().height);
+
+        cudaMemcpy(dst.getMatRef().data, d_dst, size, cudaMemcpyDeviceToHost);
+
+        cudaFree(d_src);
+        cudaFree(d_dst);
     }
 
     void CudaAlgorithm::Matmul(cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst)
@@ -80,6 +104,13 @@ namespace aek
         cudaFree(d_A);
         cudaFree(d_B);
         cudaFree(d_C);
+    }
+
+    __global__ void TransposeKernel(u_int16_t *src, u_int16_t *dst, const size_t srcWidth, const size_t srcHeight)
+    {
+        int y = blockIdx.y * blockDim.y + threadIdx.y;
+        int x = blockIdx.x * blockDim.x + threadIdx.x;
+        dst[x * srcHeight + y] = src[y * srcWidth + x];
     }
 
     __global__ void MatmulKernel(u_int16_t *A, u_int16_t *B, u_int16_t *C, size_t N)
