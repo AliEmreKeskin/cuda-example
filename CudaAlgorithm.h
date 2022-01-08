@@ -31,6 +31,7 @@ namespace aek
         virtual void Matmul(cv::InputArray src1, cv::InputArray src2, cv::OutputArray dst) override final;
         virtual void Matmul(const cv::cuda::GpuMat &src1, const cv::cuda::GpuMat &src2, cv::cuda::GpuMat &dst);
         virtual void AddRoi(const cv::cuda::GpuMat &src, cv::cuda::GpuMat &dst, const cv::Point &tl);
+        virtual void CopyRoi(const cv::cuda::GpuMat &src, const cv::Rect &rect, cv::cuda::GpuMat &dst);
     };
 
     __global__ void TransposeKernel(u_int16_t *src, u_int16_t *dst, const size_t srcWidth, const size_t srcHeight);

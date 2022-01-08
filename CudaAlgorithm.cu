@@ -10,6 +10,7 @@
  */
 
 #include "CudaAlgorithm.h"
+#include "Timer.h"
 
 namespace aek
 {
@@ -28,37 +29,43 @@ namespace aek
         output = 0;
         cv::Mat input = src.getMat();
 
-        cv::Mat window = cv::Mat(windowSize_, src.type());
-        cv::Mat transpose;
-        cv::Mat product;
+        aek::Timer timer("cuda_apply");
 
+        timer.Tic("allocation");
         cv::cuda::GpuMat d_window = cv::cuda::createContinuous(windowSize_, src.type());
         cv::cuda::GpuMat d_transpose = cv::cuda::createContinuous(windowSize_, src.type());
         cv::cuda::GpuMat d_product = cv::cuda::createContinuous(windowSize_, src.type());
-
-        cv::cuda::GpuMat d_input;
-        d_input.upload(src);
         cv::cuda::GpuMat d_output = cv::cuda::createContinuous(dst.size(), dst.type());
-        d_output.setTo(0);
+        cv::cuda::GpuMat d_input = cv::cuda::createContinuous(src.size(), src.type());
+        timer.Toc();
 
+        timer.Tic("upload");
+        d_input.upload(src);
+        timer.Toc();
+
+        timer.Tic("set_to_zero");
+        d_output.setTo(0);
+        timer.Toc();
+
+        timer.Tic("all_windows");
         cv::Point tl;
         for (tl.y = 0; tl.y < src.size().height - windowSize_.height; tl.y++)
         {
             for (tl.x = 0; tl.x < src.size().width - windowSize_.width; tl.x++)
             {
-                // input(cv::Rect(tl, windowSize_)).copyTo(window);
-                // aek::CudaAlgorithm::Transpose(window, transpose);
-                // aek::CudaAlgorithm::Matmul(window, transpose, product);
-                // output(cv::Rect(tl, windowSize_)) += product;
-
-                d_input(cv::Rect(tl, windowSize_)).copyTo(d_window);
+                // timer.Tic("window");
+                aek::CudaAlgorithm::CopyRoi(d_input,cv::Rect(tl, windowSize_),d_window);
                 aek::CudaAlgorithm::Transpose(d_window, d_transpose);
                 aek::CudaAlgorithm::Matmul(d_window, d_transpose, d_product);
-                aek::CudaAlgorithm::AddRoi(d_product,d_output,tl);
-                d_output.download(output);
-                std::cout<<output<<std::endl;
+                aek::CudaAlgorithm::AddRoi(d_product, d_output, tl);
+                // timer.Toc();
             }
         }
+        timer.Toc();
+
+        timer.Tic("download");
+        d_output.download(output);
+        timer.Toc();
     }
 
     void CudaAlgorithm::Transpose(cv::InputArray src, cv::OutputArray dst)
@@ -75,6 +82,7 @@ namespace aek
 
     void CudaAlgorithm::Transpose(const cv::cuda::GpuMat &src, cv::cuda::GpuMat &dst)
     {
+        // aek::Timer timer("transpose");
         dst.create(cv::Size(src.size().height, src.size().width), src.type());
 
         dim3 threadsPerBlock(src.size().width, src.size().height);
@@ -145,6 +153,7 @@ namespace aek
 
     void CudaAlgorithm::Matmul(const cv::cuda::GpuMat &src1, const cv::cuda::GpuMat &src2, cv::cuda::GpuMat &dst)
     {
+        // aek::Timer timer("matmul");
         dst.create(src1.size(), CV_16UC1);
 
         dim3 threadsPerBlock(dst.size().width, dst.size().height);
@@ -154,9 +163,17 @@ namespace aek
 
     void CudaAlgorithm::AddRoi(const cv::cuda::GpuMat &src, cv::cuda::GpuMat &dst, const cv::Point &tl)
     {
+        // aek::Timer timer("add_roi");
         dim3 threadsPerBlock(src.size().width, src.size().height);
         dim3 blocksPerGrid(1, 1);
         aek::AddRoiKernel<<<blocksPerGrid, threadsPerBlock>>>((u_int16_t *)src.data, src.size().width, (u_int16_t *)dst.data, dst.size().width, tl);
+    }
+
+    void CudaAlgorithm::CopyRoi(const cv::cuda::GpuMat &src, const cv::Rect &rect, cv::cuda::GpuMat &dst)
+    {
+        // aek::Timer timer("copy_roi");
+        dst.create(src.size(), src.type());
+        src(rect).copyTo(dst);
     }
 
     __global__ void TransposeKernel(u_int16_t *src, u_int16_t *dst, const size_t srcWidth, const size_t srcHeight)

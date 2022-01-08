@@ -13,11 +13,18 @@
 #include <boost/filesystem.hpp>
 #include "Algorithm.h"
 #include "CudaAlgorithm.h"
+#include "Timer.h"
+#include "CudaAlgorithm2.h"
 
 int main(int argc, char const *argv[])
 {
+    if (argc < 2)
+    {
+        std::runtime_error("Missing arguments.\nUsage: cuda-example <input-image-path> <OPTIONAL-output-image-path>");
+    }
+
     boost::filesystem::path input(argv[1]);
-    boost::filesystem::path output = input.parent_path() / "output.tiff";
+    boost::filesystem::path output = input.parent_path() / "output.png";
 
     if (argc == 3)
     {
@@ -32,21 +39,32 @@ int main(int argc, char const *argv[])
     cv::Mat img = cv::imread(input.string(), cv::ImreadModes::IMREAD_GRAYSCALE);
     cv::Mat img16u;
     img.convertTo(img16u, CV_16UC1);
-
-    // aek::Algorithm algorithm;
-    aek::CudaAlgorithm algorithm;
     cv::Mat result;
+    cv::Mat eightBitOutputImage;
 
-    auto t1label = std::chrono::high_resolution_clock::now();
+    aek::Algorithm cpuAlgorithm;
+    aek::CudaAlgorithm cudaAlgorithm;
+    aek::CudaAlgorithm2 cudaAlgorithm2;
 
-    algorithm.Apply(img16u, result);
+    aek::Timer timer("main");
 
-    auto t2label = std::chrono::high_resolution_clock::now();
-    auto ttlabel = std::chrono::duration_cast<std::chrono::microseconds>(t2label-t1label).count();
-    static int64_t sumttlabel=0;
-    sumttlabel+=ttlabel;
-    static uint64_t countlabel=0;
-    std::cout << "label " << ttlabel << "\t\t\t avg " << sumttlabel/++countlabel << std::endl;
+    timer.Tic("cpu");
+    cpuAlgorithm.Apply(img16u, result);
+    timer.Toc();
+    result.convertTo(eightBitOutputImage, CV_8UC1);
+    cv::imwrite("cpu.png", eightBitOutputImage);
+
+    timer.Tic("cuda");
+    cudaAlgorithm.Apply(img16u, result);
+    timer.Toc();
+    result.convertTo(eightBitOutputImage, CV_8UC1);
+    cv::imwrite("cuda.png", eightBitOutputImage);
+
+    timer.Tic("cuda2");
+    cudaAlgorithm2.Apply(img16u, result);
+    timer.Toc();
+    result.convertTo(eightBitOutputImage, CV_8UC1);
+    cv::imwrite("cuda2.png", eightBitOutputImage);
 
     return 0;
 }

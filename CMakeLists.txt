@@ -5,7 +5,7 @@ add_executable(${PROJECT_NAME})
 find_package(OpenCV)
 find_package(Boost REQUIRED COMPONENTS filesystem)
 
-target_sources(${PROJECT_NAME} PRIVATE main.cpp CudaAlgorithm.cu Algorithm.cpp)
+target_sources(${PROJECT_NAME} PRIVATE main.cpp CudaAlgorithm.cu Algorithm.cpp Timer.cpp CudaAlgorithm2.cu)
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${OpenCV_INCLUDE_DIRS} ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 
