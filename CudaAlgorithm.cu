@@ -32,22 +32,59 @@ namespace aek
         cv::Mat transpose;
         cv::Mat product;
 
+        cv::cuda::GpuMat d_window = cv::cuda::createContinuous(windowSize_, src.type());
+        cv::cuda::GpuMat d_transpose = cv::cuda::createContinuous(windowSize_, src.type());
+        cv::cuda::GpuMat d_product = cv::cuda::createContinuous(windowSize_, src.type());
+
+        cv::cuda::GpuMat d_input;
+        d_input.upload(src);
+        cv::cuda::GpuMat d_output = cv::cuda::createContinuous(dst.size(), dst.type());
+        d_output.setTo(0);
+
         cv::Point tl;
         for (tl.y = 0; tl.y < src.size().height - windowSize_.height; tl.y++)
         {
             for (tl.x = 0; tl.x < src.size().width - windowSize_.width; tl.x++)
             {
-                input(cv::Rect(tl, windowSize_)).copyTo(window);
-                aek::CudaAlgorithm::Transpose(window, transpose);
-                aek::CudaAlgorithm::Matmul(window, transpose, product);
-                output(cv::Rect(tl, windowSize_)) += product;
+                // input(cv::Rect(tl, windowSize_)).copyTo(window);
+                // aek::CudaAlgorithm::Transpose(window, transpose);
+                // aek::CudaAlgorithm::Matmul(window, transpose, product);
+                // output(cv::Rect(tl, windowSize_)) += product;
+
+                d_input(cv::Rect(tl, windowSize_)).copyTo(d_window);
+                aek::CudaAlgorithm::Transpose(d_window, d_transpose);
+                aek::CudaAlgorithm::Matmul(d_window, d_transpose, d_product);
+                aek::CudaAlgorithm::AddRoi(d_product,d_output,tl);
+                d_output.download(output);
+                std::cout<<output<<std::endl;
             }
         }
     }
 
     void CudaAlgorithm::Transpose(cv::InputArray src, cv::OutputArray dst)
     {
-        dst.createSameSize(src, CV_16UC1);
+        if (src.isMat() && dst.isMat())
+        {
+            aek::CudaAlgorithm::Transpose(src.getMat(), dst.getMatRef());
+        }
+        else if (src.isGpuMat() && dst.isGpuMat())
+        {
+            aek::CudaAlgorithm::Transpose(src.getGpuMat(), dst.getGpuMatRef());
+        }
+    }
+
+    void CudaAlgorithm::Transpose(const cv::cuda::GpuMat &src, cv::cuda::GpuMat &dst)
+    {
+        dst.create(cv::Size(src.size().height, src.size().width), src.type());
+
+        dim3 threadsPerBlock(src.size().width, src.size().height);
+        dim3 blocksPerGrid(1, 1);
+        aek::TransposeKernel<<<blocksPerGrid, threadsPerBlock>>>((u_int16_t *)src.data, (u_int16_t *)dst.data, src.size().width, src.size().height);
+    }
+
+    void CudaAlgorithm::Transpose(const cv::Mat &src, cv::Mat &dst)
+    {
+        dst.create(cv::Size(src.size().height, src.size().width), src.type());
 
         u_int16_t *d_src;
         u_int16_t *d_dst;
@@ -57,13 +94,13 @@ namespace aek
         cudaMalloc((void **)&d_src, size);
         cudaMalloc((void **)&d_dst, size);
 
-        cudaMemcpy(d_src, src.getMat().data, size, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_src, src.data, size, cudaMemcpyHostToDevice);
 
         dim3 threadsPerBlock(src.size().width, src.size().height);
         dim3 blocksPerGrid(1, 1);
         aek::TransposeKernel<<<blocksPerGrid, threadsPerBlock>>>(d_src, d_dst, src.size().width, src.size().height);
 
-        cudaMemcpy(dst.getMatRef().data, d_dst, size, cudaMemcpyDeviceToHost);
+        cudaMemcpy(dst.data, d_dst, size, cudaMemcpyDeviceToHost);
 
         cudaFree(d_src);
         cudaFree(d_dst);
@@ -106,6 +143,22 @@ namespace aek
         cudaFree(d_C);
     }
 
+    void CudaAlgorithm::Matmul(const cv::cuda::GpuMat &src1, const cv::cuda::GpuMat &src2, cv::cuda::GpuMat &dst)
+    {
+        dst.create(src1.size(), CV_16UC1);
+
+        dim3 threadsPerBlock(dst.size().width, dst.size().height);
+        dim3 blocksPerGrid(1, 1);
+        aek::MatmulKernel<<<blocksPerGrid, threadsPerBlock>>>((u_int16_t *)src1.data, (u_int16_t *)src2.data, (u_int16_t *)dst.data, dst.size().width);
+    }
+
+    void CudaAlgorithm::AddRoi(const cv::cuda::GpuMat &src, cv::cuda::GpuMat &dst, const cv::Point &tl)
+    {
+        dim3 threadsPerBlock(src.size().width, src.size().height);
+        dim3 blocksPerGrid(1, 1);
+        aek::AddRoiKernel<<<blocksPerGrid, threadsPerBlock>>>((u_int16_t *)src.data, src.size().width, (u_int16_t *)dst.data, dst.size().width, tl);
+    }
+
     __global__ void TransposeKernel(u_int16_t *src, u_int16_t *dst, const size_t srcWidth, const size_t srcHeight)
     {
         int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -129,6 +182,13 @@ namespace aek
             }
         }
         C[ROW * N + COL] = tmpSum;
+    }
+
+    __global__ void AddRoiKernel(u_int16_t *src, const size_t srcWidth, u_int16_t *dst, const size_t dstWidth, const cv::Point tl)
+    {
+        int y = blockIdx.y * blockDim.y + threadIdx.y;
+        int x = blockIdx.x * blockDim.x + threadIdx.x;
+        dst[(y + tl.y) * dstWidth + (tl.x + x)] += src[y * srcWidth + x];
     }
 
 } // namespace aek
