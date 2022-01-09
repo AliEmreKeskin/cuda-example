@@ -13,7 +13,6 @@
 #include <boost/filesystem.hpp>
 #include "Algorithm.h"
 #include "CudaAlgorithm.h"
-#include "Timer.h"
 #include "CudaAlgorithm2.h"
 
 int main(int argc, char const *argv[])
@@ -46,23 +45,15 @@ int main(int argc, char const *argv[])
     aek::CudaAlgorithm cudaAlgorithm;
     aek::CudaAlgorithm2 cudaAlgorithm2;
 
-    aek::Timer timer("main");
-
-    timer.Tic("cpu");
     cpuAlgorithm.Apply(img16u, result);
-    timer.Toc();
     result.convertTo(eightBitOutputImage, CV_8UC1);
     cv::imwrite("cpu.png", eightBitOutputImage);
 
-    timer.Tic("cuda");
     cudaAlgorithm.Apply(img16u, result);
-    timer.Toc();
     result.convertTo(eightBitOutputImage, CV_8UC1);
     cv::imwrite("cuda.png", eightBitOutputImage);
 
-    timer.Tic("cuda2");
     cudaAlgorithm2.Apply(img16u, result);
-    timer.Toc();
     result.convertTo(eightBitOutputImage, CV_8UC1);
     cv::imwrite("cuda2.png", eightBitOutputImage);
 

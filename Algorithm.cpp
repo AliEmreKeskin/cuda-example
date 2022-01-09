@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include "Algorithm.h"
+#include "Timer.h"
 
 namespace aek
 {
@@ -24,6 +25,7 @@ namespace aek
 
     void Algorithm::Apply(cv::InputArray src, cv::OutputArray dst)
     {
+        Timer timer("cpu_apply");
         dst.createSameSize(src, CV_16UC1);
         cv::Mat output = dst.getMatRef();
         output = 0;
